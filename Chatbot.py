@@ -8,6 +8,7 @@ from langchain_community.callbacks import get_openai_callback
 from langchain.chains import LLMChain, ConversationChain
 from dotenv import load_dotenv
 
+
 load_dotenv()
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
@@ -38,5 +39,5 @@ if __name__ == "__main__":
         response, tokens = llm_chain.generate_response(query)
         print(f"Response: {response}")
         print(f"Tokens: {tokens}")
-        
-        
+
+
