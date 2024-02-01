@@ -1,10 +1,9 @@
 import whisper
 import pyaudio
 import wave
+import time
 
-#capturing Audio till keyboard interrupts
 def CapAudio() :
-
     audio = pyaudio.PyAudio()
     stream = audio.open(format = pyaudio.paInt16, channels=1, rate=44100, input = True, frames_per_buffer = 1024)
 
@@ -22,17 +21,17 @@ def CapAudio() :
     stream.close()
     audio.terminate()
 
-    #Creating The Audio File
-    sound_file = wave.open("myaud.wav","wb")
-    sound_file.setnchannels(1)
-    sound_file.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-    sound_file.setframerate(44100)
+    # Save the audio file with a unique name
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    audFile = f"audios/audiofile_{timestamp}.wav"
+    waveFile = wave.open(audFile, 'wb')
+    waveFile.setnchannels(1)
+    waveFile.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
+    waveFile.setframerate(44100)
+    waveFile.writeframes(b''.join(frames))
+    waveFile.close()
 
-    sound_file.writeframes(b''.join(frames))
-    sound_file.close()
-
-    #File stored in a var
-    audFile = 'myaud.wav'
+    return audFile # return the name of the file
 
 #Transcribing The Audio
 def TranscribeAud(Aud) :
