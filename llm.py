@@ -45,7 +45,7 @@ class GPT:
     def set_system_prompt(self, system_prompt):
         self.system_prompt = system_prompt
 
-    def generate_response(self, prompt:str, temperature:float) -> str:
+    def generate_response(self, prompt:str, temperature:float=0.6) -> str:
         response = openai.ChatCompletion.create(
             model= self.model,
             messages = [

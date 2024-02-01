@@ -1,66 +1,49 @@
-from typing import Any, Dict, List
-from cs50 import SQL
-from langchain.chains import ConversationChain
-from langchain.schema import BaseMemory
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel
-from langchain.prompts.prompt import PromptTemplate
+from llm import GPT
+from uuid import uuid4
 import cv2
 import pandas as pd
 import numpy as np
-class ImageMemoryWithDatabase(BaseMemory, BaseMemory):
-    def __init__(self, db_path:str, OPENAI_API_KEY)->None:
+import os
+
+class ImageMemory:
+    def __init__(self, csv_path:str, OPENAI_API_KEY:str)->None:
         super().__init__()
-        self.db_path = db_path
-        self.db = SQL(f"sqlite:///{self.db_path}")
-        self.db.execute("""
-            CREATE TABLE IF NOT EXISTS llm_info (
-                id TEXT PRIMARY KEY,
-                image BLOB NOT NULL,
-                summary TEXT NOT NULL
-            )
-        """)
-        template = """
-            Summarise the text below in 1-2 sentences, for memory to be given to the coming generations.
-            
+        self.csv_path = csv_path
+        self.df = pd.read_csv(self.csv_path) if os.path.exists(csv_path) or csv_path==None else pd.DataFrame(columns=['id', 'image_path', 'summary'])
+        self.__system_prompt = "Summarise the text below in 30-40 words, for memory to be given to the coming generations."
+        self.__llm = GPT(OPENAI_API_KEY, 'gpt-3.5-turbo', self.__system_prompt)
+        self.__user_prompt = """
             Previous Summary: {summary}
 
             Prompt: {prompt}
         """
-        self.prompt_template = PromptTemplate(input_variables = ['summary', 'prompt'], template = template)
-        self.llm = ChatOpenAI(
-            model = "gpt-3.5-turbo",
-            temperature = 0.7,
-            token = OPENAI_API_KEY,
-            template = self.prompt_template,
-        )
 
-    def save_new(self, image:np.ndarray, summary:str)->None:
-        self.db.execute("""
-            INSERT INTO llm_info (image, summary) VALUES (?, ?)
-        """, (image, summary))
+    def __generate_uni_id(self)->str:
+        return str(uuid4)
     
-    def get_summary(self, id:str):
-        result_set =  self.db.execute(f"""
-            SELECT summary FROM llm_info WHERE id = :id
-        """, id=id)
-        
-        return result_set.fetchall()
+    def __save_new(self, image:np.ndarray, summary:str)->None:
+        unique_id = self.__generate_uni_id()
+        new_row = {'id': unique_id, 'image': image, 'summary': summary}
+        self.df = self.df.append(new_row, ignore_index=True)
     
-    def save_summary(self, id:str, summary:str)->None:
-        self.db.execute("""
-            UPDATE llm_info SET summary = :summary WHERE id = :id
-        """, summary=summary, id=id)
+    def get_summary(self, id:str): 
+        """
+        Here we will be calling the oneshot algo to identify the person 
+        and return the id and summary for the particular person.
+        """
+        pass
 
-    @property
-    def memory_variables(self)-> List[str]:
-        return ["summary"]
+    def __save_summary(self, id:str, summary:str)->None:
+        self.df.loc[self.df['id'] == id, 'summary'] = summary
     
-    def load_memory_variables(self, id:str)-> Dict[str, Any]:
-        result_set =  self.get_summary(id)
-        
-        return result_set.fetchall()
+    def save_data(self, new_path:str=None):
+        try:
+            self.df.to_csv(new_path if new_path is not None else self.csv_path, index=False)
+        except:
+            print('SYSTEM MESSAGE: Database not stored provide path')
     
-    def save_context(self, id:str, memory_variables:Dict[str, Any])->None:
-        summary = memory_variables["summary"]
-        self.save_summary(id, summary)
+    def generate_new_summary(self, summary:str, prompt:str, id:str):
+        user_prompt = self.__user_prompt.format(summary, prompt)
+        new_summary = self.__llm.generate_response(user_prompt)
+        self.__save_summary(id, new_summary)
+        return new_summary
