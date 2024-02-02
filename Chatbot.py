@@ -5,6 +5,7 @@ from langchain import PromptTemplate
 from langchain_community.callbacks import get_openai_callback
 from dotenv import load_dotenv
 from memory import ImageMemory
+from llm import GPT
 
 load_dotenv()
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -17,11 +18,6 @@ class LLM_Chain:
             openai_api_key = openai_api_key,
         )
         self.memory = ImageMemory(openai_api_key)
-
-    def generate_response(self, query):
-        with get_openai_callback() as cb:
-            result = self.__chatbot.run(query)
-            return result, cb.total_tokens
 
 if __name__ == "__main__":
     llm_chain = LLM_Chain(OPENAI_API_KEY)

@@ -26,12 +26,21 @@ class ImageMemory:
         new_row = {'id': unique_id, 'image': image, 'summary': summary}
         self.df = self.df.append(new_row, ignore_index=True)
     
-    def get_summary(self, id:str): 
+    def get_summary(self, face_img:np.ndarray, id:str=None): 
         """
         Here we will be calling the oneshot algo to identify the person 
         and return the id and summary for the particular person.
         """
-        pass
+        try:
+            self.summary = self.df.loc[self.df['id']==id]['summary'].values
+
+        except KeyError:
+            self.summary = 'Someone new is here to chat with you'
+
+        except:
+            self.summary = 'Unable to extract the old summary for this person'
+
+        return self.summary, id
 
     def __save_summary(self, id:str, summary:str)->None:
         self.df.loc[self.df['id'] == id, 'summary'] = summary
@@ -40,8 +49,8 @@ class ImageMemory:
         try:
             self.df.to_csv(new_path if new_path is not None else self.csv_path, index=False)
         except:
-            print('SYSTEM MESSAGE: Database not stored provide path')
-    
+            raise OSError('Dataframe not stored provide path')
+        
     def generate_new_summary(self, summary:str, prompt:str, id:str):
         user_prompt = self.__user_prompt.format(summary, prompt)
         new_summary = self.__llm.generate_response(user_prompt)
