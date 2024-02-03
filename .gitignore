@@ -1,2 +1,5 @@
 .env
 database.db
+audios/.
+__pycache__/
+```
