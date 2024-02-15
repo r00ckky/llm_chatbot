@@ -1,17 +1,13 @@
-from transformers import AutoProcessor, AutoModel
-import scipy
-
-processor = AutoProcessor.from_pretrained("suno/bark-small")
-model = AutoModel.from_pretrained("suno/bark-small")
-
-inputs = processor(
-    text=["Hello, my name is Suno. And, uh — and I like pizza. [laughs] But I also have other interests such as playing tic tac toe."],
-    return_tensors="pt",
-)
-
-speech_values = model.generate(**inputs, do_sample=True)
-
-sampling_rate = model.config.sample_rate
-scipy.io.wavfile.write("bark_out.wav", rate=speech_values, data=speech_values.cpu().numpy().squeeze())
+import pyttsx3
+from datetime import datetime
 
 
+def text_to_speech(text):
+    engine = pyttsx3.init()
+    rate = engine.getProperty('rate')
+    engine.setProperty('rate', rate-50)
+    engine.save_to_file(text, f'output_{datetime.now().strftime("%Y%m%d-%H%M%S")}.mp3')
+    engine.runAndWait()
+
+if __name__ == "__main__" :
+    text_to_speech(input('Enter Text : '))
