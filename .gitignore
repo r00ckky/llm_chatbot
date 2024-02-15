@@ -4,3 +4,11 @@ audios/
 ```
 __pycache__/
 ```
+oneshot/archive(2)
+```
+lightning_logs/version_0
+```
+oneshot.pt
+mobilenet_v3_small.tflite
+face/
+```

@@ -4,10 +4,12 @@ import cv2
 import pandas as pd
 import numpy as np
 import os
+from face import Face
 
 class ImageMemory:
-    def __init__(self, csv_path:str, OPENAI_API_KEY:str)->None:
+    def __init__(self, csv_path:str, OPENAI_API_KEY:str, dir_faces:str)->None:
         super().__init__()
+        self.face = Face()
         self.csv_path = csv_path
         self.df = pd.read_csv(self.csv_path) if os.path.exists(csv_path) or csv_path==None else pd.DataFrame(columns=['id', 'image_path', 'summary'])
         self.__system_prompt = "Summarise the text below in 30-40 words, for memory to be given to the coming generations."
