@@ -5,7 +5,6 @@ This Chatbot encompasses several scripts designed for various functionalities. B
 ## Language Model Interaction (`Chatbot.py`)
 
 This script defines two classes, `Llama` and `GPT`, for interacting with language models using the Hugging Face Transformers library and the OpenAI GPT-3.5-turbo API, respectively.
-
 <br>
 ## Face Recognition and Information Script (`face.py`)
 
@@ -20,3 +19,5 @@ This script is designed for managing image-related information, including face r
 This script performs automatic speech recognition (ASR) using the OpenAI Whisper ASR model. It records audio using the `sounddevice` library and saves the recorded audio as a WAV file. The script uses the `transformers` library to access the Whisper ASR model and `pyautogui` for triggering the audio recording.
 <br>
 ## Text To Speech(`tts.py`)
+
+This script uses pyttsx3 for producing mp3 file of the entered text.
