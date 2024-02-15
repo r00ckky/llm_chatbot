@@ -6,6 +6,8 @@ This Chatbot encompasses several scripts designed for various functionalities. B
 
 This script defines two classes, `Llama` and `GPT`, for interacting with language models using the Hugging Face Transformers library and the OpenAI GPT-3.5-turbo API, respectively.
 
+<br>
+
 ## Face Recognition and Information Script (`face.py`)
 
 This script utilizes the `face_recognition` library and `OpenCV` for face recognition and information extraction. The script provides a `Face` class with methods for initializing face recognition, obtaining face information from an image, and saving new face information.
