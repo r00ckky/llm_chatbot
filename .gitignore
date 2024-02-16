@@ -12,3 +12,4 @@ oneshot.pt
 mobilenet_v3_small.tflite
 face/
 ```
+test.py
