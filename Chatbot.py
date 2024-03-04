@@ -17,7 +17,7 @@ class LLM_Chain:
             temperature = temperature,
             openai_api_key = openai_api_key,
         )
-        self.memory = ImageMemory(openai_api_key)
+        self.memory = ImageMemory(csv_path= None, OPENAI_API_KEY=openai_api_key, dir_faces = 'face')
 
 if __name__ == "__main__":
     llm_chain = LLM_Chain(OPENAI_API_KEY)

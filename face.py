@@ -58,11 +58,11 @@ class Face:
             for name, face_image in zip(names, face_images):
                 self.face_name.append(name)
                 self.known_face.append(face_image)
-                self.known_face_encoding(fr.face_encodings(face_image)[0])
+                self.known_face_encoding.append(fr.face_encodings(face_image)[0])
         else:    
             self.face_name.append(names)
             self.known_face.append(face_images)
-            self.known_face_encoding(fr.face_encodings(face_images)[0])
+            self.known_face_encoding.append(fr.face_encodings(face_images)[0])
 
 if __name__ == '__main__':
     bruh = Face(DIR_FACES='face')
