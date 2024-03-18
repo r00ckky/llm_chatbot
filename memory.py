@@ -8,8 +8,10 @@ import pymongo as pym
 from face import Face
 from summariser import *
 from dotenv import load_dotenv
+
 load_dotenv()
 MANGODB_CONNECTION_STRING = os.environ.get('MANGODB_CONNECTION_STRING')
+
 class ImageMemory:
     def __init__(self, cliet_path:str):
         super().__init__()
@@ -32,9 +34,14 @@ class ImageMemory:
                 summary.append("They are new")
             else:
                 summary.append(self.__database.find({"_id":names[i],}, {"summary":1, "_id":0, "face_encoding":0})["summary"])
-        return summary
+        return summary, names
     
     def retrieve_summary(self, img:np.array, area_max:bool, prompt:str):
-        summary = self.__retrieve_summary(img, area_max=area_max)
+        summary, names = self.__retrieve_summary(img, area_max=area_max)
         new_summary = get_summary(prompt=prompt, summary="\n".join(summary))
-        return new_summary
+        return new_summary, names
+    
+    def __update_summary(self, summary:list[str], names:list[str]):
+        for sum, name in zip(summary, names):
+            self.__database.update_one({"_id":name}, {"$set":{"summary":sum}})
+        
