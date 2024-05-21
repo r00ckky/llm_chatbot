@@ -4,12 +4,11 @@ import face_recognition as fr
 import cv2
 import numpy as np
 import torch
-import numpy as np
-import os
 import torchvision
 from torchvision.transforms import v2
 from pymongo import MongoClient
 from torch import nn
+from typing import List, Dict
 
 MONGO_CONNECTION_STRING = os.environ.get('MONGODB_ATLAS_CONNECTION_STRING')
 
@@ -125,7 +124,7 @@ class FaceEmbedding(Model):
     def makeEmbeddings(self, img, k):
         face_locations = fr.face_locations(img)
         sorted(face_locations, key = lambda rect: abs(rect[2]-rect[0])*abs(rect[1]-rect[3]))
-        face_locations = face_locations[-k:][::-1]
+        face_locations = face_locations[:k][::-1]
         EucEmb = []
         FREmb = []
         for face in face_locations:
@@ -138,7 +137,7 @@ class FaceEmbedding(Model):
     def __make_pipeline(self, EucEmb):
         pipeline = [{
             "$vectorSearch":{
-                "index":"vector_index",
+                "index":"FaceEuc",
                 "path":"EuclidianEmbeddings",
                 "queryVector":EucEmb,
                 "numCandidates":200,
@@ -147,7 +146,7 @@ class FaceEmbedding(Model):
         }]
         return pipeline
         
-    def __saveEmbedding(self, embeddings:list[list,list])->None:
+    def __saveEmbedding(self, embeddings)->None:
         data = []
         for EucEmb, FREmb in embeddings:
             data.append({
@@ -156,6 +155,36 @@ class FaceEmbedding(Model):
             })
         self.collection.insert_many(data)
     
-    def VectorSearch(self, img, k):
+    def __saveOneEmbedding(self, FREmb, EucEmb):
+        self.collection.insert({
+                "EuclidianEmbedding_1":EucEmb,
+                "FREmbedding_1":FREmb
+            }
+        )
+    
+    def __vectorSearch(self, img, k):
         EucEmb, FREmb = self.makeEmbeddings(img, k)
+        ResEmb = self.collection.aggregate(self.__make_pipeline(EucEmb))
+        RecFace = []
+        NotRecFace = []
+        for emb in range(len(FREmb)):
+            match = fr.compare_faces([i['FREmbedding_1'] for i in ResEmb], FREmb[emb])[0]
+            if True in match:
+                idx = match.index(True)
+                RecFace.append(ResEmb[idx])
+            else:
+                idx = FREmb.index(emb)
+                NotRecFace.append([
+                    EucEmb[emb],
+                    FREmb[emb]
+                ])
+        return RecFace, NotRecFace
+    
+    def vectorSearch(self, img, k, SaveNotRecFace=False):
+        RecFace, NotRecFace = self.__vectorSearch(img, k)        
+        if SaveNotRecFace:
+            for embedding in NotRecFace:
+                self.__saveEmbedding(embedding)
+                
         
+            
