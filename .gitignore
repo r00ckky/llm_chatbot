@@ -13,3 +13,5 @@ mobilenet_v3_small.tflite
 face/
 ```
 test.py
+testing_images/
+```

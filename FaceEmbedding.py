@@ -9,6 +9,8 @@ from torchvision.transforms import v2
 from pymongo import MongoClient
 from torch import nn
 from typing import List, Dict
+from dotenv import load_dotenv
+load_dotenv()
 
 MONGO_CONNECTION_STRING = os.environ.get('MONGODB_ATLAS_CONNECTION_STRING')
 
@@ -98,7 +100,7 @@ class Model(nn.Module):
         return out_pos, out_anc, out_neg
 
 class FaceEmbedding(Model):
-    def __init__(self) -> None:
+    def __init__(self, MONGO_CONNECTION_STRING=MONGO_CONNECTION_STRING) -> None:
         super().__init__()
         self.FaceEmbeddingModel = torch.load('Model/model2.pth')
         self.T = v2.Compose([
@@ -115,7 +117,7 @@ class FaceEmbedding(Model):
         
     def __makeEucEmbeddings(self, img)->np.ndarray:
         img_t = self.T(img)
-        img_t = torch.unsqueeze(dim=0)
+        img_t = torch.unsqueeze(img_t, dim=0)
         embedding = self.FaceEmbeddingModel.pos(img_t)
         del img_t
         torch.cuda.empty_cache()
@@ -123,22 +125,24 @@ class FaceEmbedding(Model):
 
     def makeEmbeddings(self, img, k):
         face_locations = fr.face_locations(img)
+        print(face_locations)
         sorted(face_locations, key = lambda rect: abs(rect[2]-rect[0])*abs(rect[1]-rect[3]))
         face_locations = face_locations[:k][::-1]
         EucEmb = []
         FREmb = []
         for face in face_locations:
             face_img = img[face[0]:face[2], face[1]:face[3]]
-            EucEmb.append(self.__makeEucEmbeddings(face_img).tolist())
+            Euc = self.__makeEucEmbeddings(face_img)
+            print(Euc.shape())
+            EucEmb.append(Euc.to_list())
             FREmb.append(fr.face_encodings(face_img))
-            
-        return EucEmb, FREmb
+        return EucEmb, FREmb, face_locations
     
     def __make_pipeline(self, EucEmb):
         pipeline = [{
-            "$vectorSearch":{
-                "index":"FaceEuc",
-                "path":"EuclidianEmbeddings",
+            "$vectorSearch": {
+                "index": "vector_index",
+                "path": "EuclidianEmbedding_1",
                 "queryVector":EucEmb,
                 "numCandidates":200,
                 "limit":10
@@ -146,7 +150,7 @@ class FaceEmbedding(Model):
         }]
         return pipeline
         
-    def __saveEmbedding(self, embeddings)->None:
+    def saveEmbedding(self, embeddings)->None:
         data = []
         for EucEmb, FREmb in embeddings:
             data.append({
@@ -155,15 +159,8 @@ class FaceEmbedding(Model):
             })
         self.collection.insert_many(data)
     
-    def __saveOneEmbedding(self, FREmb, EucEmb):
-        self.collection.insert({
-                "EuclidianEmbedding_1":EucEmb,
-                "FREmbedding_1":FREmb
-            }
-        )
-    
     def __vectorSearch(self, img, k):
-        EucEmb, FREmb = self.makeEmbeddings(img, k)
+        EucEmb, FREmb, face_locations = self.makeEmbeddings(img, k)
         ResEmb = self.collection.aggregate(self.__make_pipeline(EucEmb))
         RecFace = []
         NotRecFace = []
@@ -178,13 +175,31 @@ class FaceEmbedding(Model):
                     EucEmb[emb],
                     FREmb[emb]
                 ])
-        return RecFace, NotRecFace
+        return RecFace, NotRecFace, face_locations
     
     def vectorSearch(self, img, k, SaveNotRecFace=False):
-        RecFace, NotRecFace = self.__vectorSearch(img, k)        
+        RecFace, NotRecFace, face_locations = self.__vectorSearch(img, k)        
         if SaveNotRecFace:
             for embedding in NotRecFace:
-                self.__saveEmbedding(embedding)
-                
-        
-            
+                self.saveEmbedding(embedding)
+        return RecFace, NotRecFace, face_locations
+
+def draw_boxes(image, locations, color=(0, 255, 0)):
+    """Draw bounding boxes around faces"""
+    for (top, right, bottom, left) in locations:
+        cv2.rectangle(image, (left, top), (right, bottom), color, 2)
+
+if __name__ == "__main__":
+    face_embedding_model = FaceEmbedding()
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        rgb_frame = frame[:, :, ::-1]
+        RecFaces, NotRecFaces, face_locations = face_embedding_model.vectorSearch(rgb_frame, k=1, SaveNotRecFace=False)
+        draw_boxes(frame, [loc for _, loc in RecFaces], color=(0, 255, 0))
+        draw_boxes(frame, [loc for _, loc in NotRecFaces], color=(0, 0, 255))
+        cv2.imshow('Face Recognition', frame)
+        if cv2.waitKey('q'):
+            break
