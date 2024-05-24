@@ -8,19 +8,11 @@ import torchvision
 from torchvision.transforms import v2
 from pymongo import MongoClient
 from torch import nn
-from typing import List, Dict
 from dotenv import load_dotenv
+from matplotlib import pyplot as plt
 load_dotenv()
 
 MONGO_CONNECTION_STRING = os.environ.get('MONGODB_ATLAS_CONNECTION_STRING')
-
-T = v2.Compose([
-        v2.ToTensor(),
-        v2.Resize(256),
-        v2.CenterCrop(224),
-        v2.Normalize(mean = [0.48235, 0.45882, 0.40784], 
-                     std=[0.00392156862745098, 0.00392156862745098, 0.00392156862745098])
-    ])
 
 class ResLink(nn.Module):
     def __init__(self, in_ch) -> None:
@@ -103,8 +95,10 @@ class FaceEmbedding(Model):
     def __init__(self, MONGO_CONNECTION_STRING=MONGO_CONNECTION_STRING) -> None:
         super().__init__()
         self.FaceEmbeddingModel = torch.load('Model/model2.pth')
+        self.device = next(self.FaceEmbeddingModel.parameters()).device
         self.T = v2.Compose([
-            v2.ToTensor(),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32),
             v2.Resize(256),
             v2.CenterCrop(224),
             v2.Normalize(mean = [0.48235, 0.45882, 0.40784], 
@@ -118,24 +112,23 @@ class FaceEmbedding(Model):
     def __makeEucEmbeddings(self, img)->np.ndarray:
         img_t = self.T(img)
         img_t = torch.unsqueeze(img_t, dim=0)
-        embedding = self.FaceEmbeddingModel.pos(img_t)
+        embedding = self.FaceEmbeddingModel.pos(img_t.to(self.device))
         del img_t
         torch.cuda.empty_cache()
-        return embedding.squeeze().cpu().numpy()
+        return embedding.squeeze().cpu().detach().numpy()
 
     def makeEmbeddings(self, img, k):
         face_locations = fr.face_locations(img)
-        print(face_locations)
         sorted(face_locations, key = lambda rect: abs(rect[2]-rect[0])*abs(rect[1]-rect[3]))
         face_locations = face_locations[:k][::-1]
         EucEmb = []
         FREmb = []
         for face in face_locations:
-            face_img = img[face[0]:face[2], face[1]:face[3]]
+            top, right, bottom, left = face
+            face_img = img[top:bottom, left:right]
+            FREmb.append(fr.face_encodings(img, [face])[0])
             Euc = self.__makeEucEmbeddings(face_img)
-            print(Euc.shape())
-            EucEmb.append(Euc.to_list())
-            FREmb.append(fr.face_encodings(face_img))
+            EucEmb.append(Euc.tolist())
         return EucEmb, FREmb, face_locations
     
     def __make_pipeline(self, EucEmb):
