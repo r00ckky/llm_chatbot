@@ -131,6 +131,7 @@ class FaceEmbedding(Model):
         return EucEmb, FREmb, face_locations
     
     def __make_pipeline(self, EucEmb):
+        
         pipeline = [{
             "$vectorSearch": {
                 "index": "vector_index",
@@ -153,7 +154,10 @@ class FaceEmbedding(Model):
     
     def __vectorSearch(self, img, k):
         EucEmb, FREmb, face_locations = self.makeEmbeddings(img, k)
-        ResEmb = self.collection.aggregate(self.__make_pipeline(EucEmb))
+        ResEmb = []
+        if isinstance(EucEmb, list):
+            for emb in EucEmb:
+                ResEmb.append(self.collection.aggregate(self.__make_pipeline(emb)))
         RecFace = []
         NotRecFace = []
         for emb in range(len(FREmb)):
