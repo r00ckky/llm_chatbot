@@ -76,7 +76,6 @@ class EncoderCNN(nn.Module):
         # x = self.cnn3(x)
         x = self.avg(x)
         x = x.squeeze()
-        print(x.shape)
         x = self.out(x)
         return x
     
